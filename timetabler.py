@@ -1,15 +1,15 @@
 import argparse
 import enum
 
+class Timetable:
+    def __str__(self):
+        pass
+
 class Problem:
     # Constraints: 
     # - Every submission needs a timeslot for its track
     # - Each team needs non-overlapping timeslots
     def solve_timetable(self) -> Timetable:
-        pass
-
-class Timetable:
-    def __str__(self):
         pass
 
 def parse(content: str) -> Problem:
@@ -20,9 +20,7 @@ def readfile(filename: str) -> str:
         return f.read()
 
 def main():
-    parser = argparse.ArgumentParser(
-                    prog='Timetabler',
-                    description='HTB XII Timetabler')
+    parser = argparse.ArgumentParser(description='HTB XII Timetabler')
     parser.add_argument("-f", "--filename")
     args = parser.parse_args()
     if args.filename:
