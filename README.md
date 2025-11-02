@@ -12,6 +12,7 @@ python3 timetabler.py --verify -d [buidl_export.csv] -t [tracks.csv] # Finds non
 2. Configure the tracks in a file called `tracks.csv`, which should have the names of each of the tracks (to match the track names in DoraHacks), along with the number of timeslots for that track (it's recommended you keep the same number of slots in every track, but that's configurable)
 3. Run the script with `python3 timetabler.py -d buidl_export.csv -t tracks.csv --verify`
 4. Check for any messages. It will warn you about any similar team names (which may mean two submissions with slightly different spellings of the name) and any teams which should be manually reviewed to ensure that the same team hasn't submitted twice when they shouldn't be (it does automatically remove optiver submissions so it won't warn you about optiver + something else). If it says it's unsatisfiable, you may need to increase the number of timeslots.
+5. It will then output a csv for every tracks timetable in the `output/` folder, which can then be imported manually into google sheets if needed.
 
 ## Notes
 
