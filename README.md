@@ -16,6 +16,8 @@ python3 timetabler.py --verify -d [buidl_export.csv] -t [tracks.csv] # Finds non
 
 ## Notes
 
+**Timeslots are assumed to be globally sized and running concurrently. i.e. the first timeslot in Track A would run concurrently to the first timeslot in track B and end at the same time.**
+
 The general way this works is by building each track as a list of variables, and using the z3 SAT solver to solve for a satisfiable solution.
 
 You can consider each track like a list of integers, with the shape given in the config file. For instance:
