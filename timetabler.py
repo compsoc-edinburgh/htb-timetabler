@@ -5,6 +5,7 @@ import itertools
 import pandas
 
 from z3 import *
+from Levenshtein import distance # for computing string similarity only
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class Timetable:
     def as_csv(self):
         for name, track in self.tracks:
             print("====", name, "====")
-            print(",".join(["Timeslot Number", "BUIDL ID", "BUIDL Name", "Discord Contact"]))
+            print(",".join(["Timeslot Number", "BUIDL ID", "Team Name", "Discord Contact"]))
             for i, sub in enumerate(track):
                 print(",".join([str(i), str(sub.bid) if sub else "", sub.name if sub else "", sub.contact if sub else ""]))
     def __str__(self):
@@ -27,32 +28,67 @@ class Timetable:
         return msg
 
 class Submission:
-    def __init__(self, bid, name, track, contact):
+    def __init__(self, uid, name, track, contact, bid):
         self.bid = bid
+        self.uid = uid
         self.name = name
         self.track = track
         self.contact = contact
     def __str__(self):
         return "Name: " + self.name + " BUIDL ID: " + str(self.bid) + " Contact: " + self.contact
 
+class BadPerfectHash:
+    def __init__(self):
+        self.state = []
+    def get_id(self, val):
+        try:
+            return self.state.index(val)
+        except ValueError:
+            self.state.append(val)
+            return len(self.state)-1
+
 class Problem:
     def __init__(self, df: pandas.DataFrame, track_shapes=[("HackTheBurgh Challenge", 12), ("G-Research Challenge", 12), ("Huawei Challenge", 12)]):
+        self.df = df
         self.submissions = []
+        hasher = BadPerfectHash()
         for i, row in df.iterrows():
             tracks = row["Track"][1:-1].split(", ")
             for track in tracks:
-                submission = Submission(row["BUIDL ID"], row["BUIDL name"], track, row["Discord handle:"])
+                submission = Submission(hasher.get_id(row['Team Name:']), row["Team Name:"], track, row["Discord handle:"], row["BUIDL ID"])
                 self.submissions.append(submission)
         logger.debug([str(s) for s in self.submissions])
         self.track_shapes = track_shapes
 
-    def detect_bad_submissions(self) -> [str]:
+    def detect_bad_submissions(self):
         """
-        Teams can only submit one BUIDL (though can submit to multiple tracks)
-        The only exception is people can submit a seperate submission to optiver.
-        This will return any teams who have non-compliant submissions.
+        Checks:
+        - Finds any duplicate team names in submissions (after removing optiver track submissions)
+        - Searches for perceptually similar team names 
         """
-        pass
+
+        # Detecting direct duplicate team submissions
+        logger.debug(self.df)
+        submitted_team_names = set([])
+        for i, row in self.df.iterrows():
+            team_name = str(row['Team Name:'])
+            if row["Track"] == '"Optiver Challenge"':
+                continue
+            if team_name not in submitted_team_names:
+                submitted_team_names.add(team_name)
+            else:
+                logger.error(f"Duplicate submission for team \"{team_name}\" detected.")
+        
+        # Detecting perceptual similarity in team names
+        team_names = [str(t) for t in self.df['Team Name:']]
+        logger.debug(team_names)
+        for team1, team2 in itertools.combinations(team_names, 2):
+            logger.debug("Comparing %s and %s", team1, team2)
+            d = distance(team1, team2)
+            logger.debug("Distance is %s", str(d))
+            if d < 5:
+                logger.warning("Perceptually similar team names detected: %s and %s --- are these the same team?", team1, team2)
+
 
     def z3_solve(self) -> tuple[list[list[Int]], Model]:
         """
@@ -71,7 +107,7 @@ class Problem:
 
         # Non-overlapping timeslot constraint
         for i in range(max([s[1] for s in self.track_shapes])): # from 0 to the largest index
-            combs = itertools.pairwise([track_bin[i] for track_bin in track_bins if i < len(track_bin)])
+            combs = itertools.combinations([track_bin[i] for track_bin in track_bins if i < len(track_bin)], 2)
             for comb1, comb2 in combs:
                 s.add(comb1 != comb2)
         logger.debug(s)
@@ -84,7 +120,7 @@ class Problem:
                 if i == len(self.track_shapes)-1:
                     raise Exception(f"Unknown track found in data: {sub.track}, please specify track shape.")
             track_bin = track_bins[i]
-            s.add(Or([v == sub.bid for v in track_bin]))
+            s.add(Or([v == sub.uid for v in track_bin]))
         logger.debug(s)
                 
         # Timeslots are unique per track
@@ -107,27 +143,29 @@ class Problem:
                 logger.error(f"Impossible problem found: the number of submissions for {track_name} ({num_track_submissions}) > the number of slots {num_slots}")
 
     def solve_timetable(self) -> Timetable:
-        try:
-            # Attempt to solve with z3 --- will fail to unpack with a TypeError if unsat
-            track_bins, solve = self.z3_solve()
-            logger.debug(solve)
-
-            # Extract z3 solution into a list of tuples like (track_name, timetabled submissions (or None) in order)
-            tracks = [[solve[v] for v in track_bin] for track_bin in track_bins]
-            for i, track in enumerate(tracks):
-                track_name = self.track_shapes[i][0]
-                for j, bid in enumerate(track):
-                    for sub in self.submissions+[None]:
-                        if not sub or (bid == sub.bid and track_name == sub.track):
-                            track[j] = sub
-                            break
-                tracks[i] = (track_name, track)
-            logger.debug(tracks)
-
-            # Return parsed solution in a Timetable object
-            return Timetable(tracks)
-        except TypeError:
+        # Attempt to solve with z3 --- will fail to unpack with a TypeError if unsat
+        sol = self.z3_solve()
+        if not sol:
             logger.error("Unsatisfiable problem, please try adjusting constraints. Try increasing the number of slots.")
+
+        track_bins, solve = sol
+
+        logger.debug(solve)
+
+        # Extract z3 solution into a list of tuples like (track_name, timetabled submissions (or None) in order)
+        tracks = [[solve[v] for v in track_bin] for track_bin in track_bins]
+        for i, track in enumerate(tracks):
+            track_name = self.track_shapes[i][0]
+            for j, uid in enumerate(track):
+                for sub in self.submissions+[None]:
+                    if not sub or (uid == sub.uid and track_name == sub.track):
+                        track[j] = sub
+                        break
+            tracks[i] = (track_name, track)
+        logger.debug(tracks)
+
+        # Return parsed solution in a Timetable object
+        return Timetable(tracks)
 
 def timetable(track_config, dorahack_export, do_verify=False):
     # Parse track config
@@ -142,7 +180,7 @@ def timetable(track_config, dorahack_export, do_verify=False):
     
     # Verify submissions are actually valid if asked to
     if do_verify:
-        print(problem.detect_bad_submissions())
+        problem.detect_bad_submissions()
 
     # Attempt to solve for a timetable
     timetable = problem.solve_timetable()
