@@ -2,7 +2,7 @@
 
 Usage:
 ```sh
-python3 timetabler.py -f [buidl_export.csv]
-python3 timetabler.py --verify -f [buidl_export.csv] # Finds non-compliant team submissions
+python3 timetabler.py -d [buidl_export.csv] -t [tracks.csv]
+python3 timetabler.py --verify -d [buidl_export.csv] -t [tracks.csv] # Finds non-compliant team submissions
 ```
 

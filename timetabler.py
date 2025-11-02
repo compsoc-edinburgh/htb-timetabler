@@ -140,7 +140,7 @@ def timetable(track_config, dorahack_export, do_verify=False):
     problem = Problem(df, track_shapes=tracks)
     problem.catch_dumb_errors()
     
-    # Verify submissions are actually
+    # Verify submissions are actually valid if asked to
     if do_verify:
         print(problem.detect_bad_submissions())
 
