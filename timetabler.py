@@ -1,6 +1,7 @@
 import argparse
 import logging
 import itertools
+import os
 
 import pandas
 
@@ -14,10 +15,18 @@ class Timetable:
         self.tracks = tracks
     def as_csv(self):
         for name, track in self.tracks:
-            print("====", name, "====")
-            print(",".join(["Timeslot Number", "BUIDL ID", "Team Name", "Discord Contact"]))
-            for i, sub in enumerate(track):
-                print(",".join([str(i), str(sub.bid) if sub else "", sub.name if sub else "", sub.contact if sub else ""]))
+            name = name.replace(" ", "_")
+            try: 
+                os.mkdir("output/", )
+            except FileExistsError:
+                pass
+            with open(f"output/{name}.csv", "w") as f:
+                msg = ""
+                msg += ",".join(["Timeslot Number", "BUIDL ID", "Team Name", "Discord Contact"])
+                for i, sub in enumerate(track):
+                    msg += "\n" + ",".join([str(i), str(sub.bid) if sub else "", sub.name if sub else "", sub.contact if sub else ""])
+                logging.debug(msg)
+                f.write(msg)
     def __str__(self):
         msg = ""
         for name, track in self.tracks:
