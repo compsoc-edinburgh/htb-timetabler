@@ -22,9 +22,9 @@ class Timetable:
                 pass
             with open(f"output/{name}.csv", "w") as f:
                 msg = ""
-                msg += ",".join(["Timeslot Number", "BUIDL ID", "Team Name", "Discord Contact"])
+                msg += ",".join(["Timeslot Number", "BUIDL ID", "BUIDL Link", "Team Name", "Discord Contact"])
                 for i, sub in enumerate(track):
-                    msg += "\n" + ",".join([str(i), str(sub.bid) if sub else "", sub.name if sub else "", sub.contact if sub else ""])
+                    msg += "\n" + ",".join([str(i), str(sub.bid) if sub else "",sub.buidl_link if sub else "", sub.name if sub else "", sub.contact if sub else ""])
                 logging.debug(msg)
                 f.write(msg)
     def __str__(self):
@@ -37,12 +37,13 @@ class Timetable:
         return msg
 
 class Submission:
-    def __init__(self, uid, name, track, contact, bid):
+    def __init__(self, uid, name, track, contact, bid, buidl_link):
         self.bid = bid
         self.uid = uid
         self.name = name
         self.track = track
         self.contact = contact
+        self.buidl_link = buidl_link
     def __str__(self):
         return "Name: " + self.name + " BUIDL ID: " + str(self.bid) + " Contact: " + self.contact
 
@@ -64,7 +65,7 @@ class Problem:
         for i, row in df.iterrows():
             tracks = row["Track"][1:-1].split(", ")
             for track in tracks:
-                submission = Submission(hasher.get_id(row['Team Name:']), row["Team Name:"], track, row["Discord handle:"], row["BUIDL ID"])
+                submission = Submission(hasher.get_id(row['Team Name:']), row["Team Name:"], track, row["Discord handle:"], row["BUIDL ID"], str(row["BUIDL profile"]))
                 self.submissions.append(submission)
         logger.debug([str(s) for s in self.submissions])
         self.track_shapes = track_shapes
