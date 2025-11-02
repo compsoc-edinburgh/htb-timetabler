@@ -143,7 +143,6 @@ class Problem:
                 logger.error(f"Impossible problem found: the number of submissions for {track_name} ({num_track_submissions}) > the number of slots {num_slots}")
 
     def solve_timetable(self) -> Timetable:
-        # Attempt to solve with z3 --- will fail to unpack with a TypeError if unsat
         sol = self.z3_solve()
         if not sol:
             logger.error("Unsatisfiable problem, please try adjusting constraints. Try increasing the number of slots.")
