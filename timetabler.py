@@ -2,6 +2,7 @@ import argparse
 import logging
 import itertools
 import os
+import random
 
 import pandas
 
@@ -68,6 +69,11 @@ class Problem:
         for i, row in df.iterrows():
             tracks = row["Track"].replace('"', "").split(", ")
             for track in tracks:
+                if track == "G-Research Challenge":
+                    if random.random() < .5:
+                        track += "-0"
+                    else:
+                        track += "-1"
                 submission = Submission(hasher.get_id(row['Team Name:']), row["Team Name:"], track, row["Discord handle:"], row["BUIDL ID"], str(row["BUIDL profile"]))
                 self.submissions.append(submission)
         logger.debug([str(s) for s in self.submissions])
