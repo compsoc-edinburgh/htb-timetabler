@@ -10,6 +10,9 @@ from Levenshtein import distance # for computing string similarity only
 
 logger = logging.getLogger(__name__)
 
+def sanitize(val, safe="qwertyuiopasdfghjklzxcvbnm1234567890!@#$%^&*()./+=-:;|[]{}"):
+    return "".join([c for c in val in c in safe])
+
 class Timetable:
     def __init__(self, tracks):
         self.tracks = tracks
@@ -24,7 +27,7 @@ class Timetable:
                 msg = ""
                 msg += ",".join(["Timeslot Number", "BUIDL ID", "BUIDL Link", "Team Name", "Discord Contact"])
                 for i, sub in enumerate(track):
-                    msg += "\n" + ",".join([str(i), str(sub.bid) if sub else "",sub.buidl_link if sub else "", sub.name if sub else "", sub.contact if sub else ""])
+                    msg += "\n" + ",".join([str(i), str(sub.bid) if sub else "",sub.buidl_link if sub else "", str(sub.name).replace("\n", " ") if sub else "", str(sub.contact).replace("\n", " ") if sub else ""])
                 logging.debug(msg)
                 f.write(msg)
     def __str__(self):
@@ -45,7 +48,7 @@ class Submission:
         self.contact = contact
         self.buidl_link = buidl_link
     def __str__(self):
-        return "Name: " + self.name + " BUIDL ID: " + str(self.bid) + " Contact: " + self.contact
+        return "Name: " + self.name + " BUIDL ID: " + str(self.bid) + " Contact: " + str(self.contact)
 
 class BadPerfectHash:
     def __init__(self):
@@ -63,7 +66,7 @@ class Problem:
         self.submissions = []
         hasher = BadPerfectHash()
         for i, row in df.iterrows():
-            tracks = row["Track"][1:-1].split(", ")
+            tracks = row["Track"].replace('"', "").split(", ")
             for track in tracks:
                 submission = Submission(hasher.get_id(row['Team Name:']), row["Team Name:"], track, row["Discord handle:"], row["BUIDL ID"], str(row["BUIDL profile"]))
                 self.submissions.append(submission)
@@ -82,7 +85,7 @@ class Problem:
         submitted_team_names = set([])
         for i, row in self.df.iterrows():
             team_name = str(row['Team Name:'])
-            if row["Track"] == '"Optiver Challenge"':
+            if row["Track"] == 'Optiver Challenge':
                 continue
             if team_name not in submitted_team_names:
                 submitted_team_names.add(team_name)
@@ -90,7 +93,7 @@ class Problem:
                 logger.error(f"Duplicate submission for team \"{team_name}\" detected.")
         
         # Detecting perceptual similarity in team names
-        team_names = [str(t) for t in self.df['Team Name:']]
+        team_names = [str(t) for t in list(set(self.df['Team Name:']))]
         logger.debug(team_names)
         for team1, team2 in itertools.combinations(team_names, 2):
             logger.debug("Comparing %s and %s", team1, team2)
